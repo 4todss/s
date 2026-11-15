@@ -1,110 +1,252 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="theme-color" content="#000000">
-  <title>33 Second Timer</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#080808">
+  <title></title>
   <style>
     * { box-sizing: border-box; }
-    html, body {
-      width: 100%; height: 100%; margin: 0; overflow: hidden;
-      background: #000; color: #aaa;
+    html, body { width: 100%; height: 100%; margin: 0; }
+    body {
+      overflow: hidden;
+      background: #080808 url("jorvcd.jpg") center center / cover no-repeat fixed;
       font-family: Arial, Helvetica, sans-serif;
     }
-    body {
-      display: grid; place-items: center;
-      transition: background-color 65ms linear;
-    }
-    body.flash { background: #e00000; }
-    main { display: grid; place-items: center; gap: 24px; }
-    .timer {
-      --progress: 0deg;
-      width: min( min(72vw, 72vh), 390px);
-      aspect-ratio: 1;
-      border-radius: 50%;
-      display: grid; place-items: center;
-      background: conic-gradient(
-        from -90deg,
-        #929292 var(--progress),
-        #292929 var(--progress)
-      );
-      position: relative;
-      transition: background 70ms linear;
-    }
-    .timer::before {
-      content: "";
-      position: absolute;
-      inset: 9px;
-      border-radius: 50%;
+    .start-cover {
+      position: fixed;
+      inset: 0;
+      z-index: 10;
+      display: grid;
+      place-items: center;
       background: #000;
-      transition: background-color 65ms linear;
+      cursor: pointer;
+      border: 0;
+      width: 100%;
+      height: 100%;
+      padding: 0;
     }
-    body.flash .timer::before { background: #e00000; }
-    .readout {
-      position: relative;
-      z-index: 1;
-      color: #bdbdbd;
-      font-size: clamp(48px, 12vw, 76px);
-      font-weight: 300;
+    .start-cover.hidden { display: none; }
+    .player {
+      position: fixed;
+      left: 50%;
+      bottom: max(22px, env(safe-area-inset-bottom));
+      transform: translateX(-50%);
+      z-index: 11;
+      width: min(310px, calc(100vw - 40px));
+      padding: 13px 17px 12px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      background: rgba(0, 0, 0, .52);
+      border: 1px solid rgba(255,255,255,.13);
+      border-radius: 8px;
+      backdrop-filter: blur(5px);
+      -webkit-backdrop-filter: blur(5px);
+    }
+    .time-row {
+      width: 100%;
+      display: flex;
+      justify-content: space-between;
+      color: rgba(245, 242, 232, .88);
+      font-size: 11px;
+      line-height: 1;
       font-variant-numeric: tabular-nums;
-      letter-spacing: -3px;
+      letter-spacing: .02em;
+      user-select: none;
     }
-    .hint {
-      color: #555; font-size: 11px; letter-spacing: 3px;
-      text-transform: uppercase;
+    .progress {
+      width: 100%;
+      height: 4px;
+      appearance: none;
+      -webkit-appearance: none;
+      border: 0;
+      border-radius: 99px;
+      outline: none;
+      background: rgba(245, 242, 232, .30);
+      cursor: pointer;
     }
-    @media (prefers-reduced-motion: reduce) {
-      body, .timer, .timer::before { transition: none; }
+    .progress::-webkit-slider-thumb {
+      appearance: none;
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: #eeeae0;
+      opacity: 0;
     }
+    .progress:hover::-webkit-slider-thumb { opacity: 1; }
+    .progress::-moz-range-thumb {
+      width: 7px; height: 7px; border: 0;
+      border-radius: 50%; background: #eeeae0;
+      opacity: 0;
+    }
+    .progress:hover::-moz-range-thumb { opacity: 1; }
+    .progress::-moz-range-track {
+      height: 3px; border-radius: 99px;
+      background: rgba(245, 242, 232, .30);
+    }
+    .progress::-moz-range-progress {
+      height: 3px; border-radius: 99px;
+      background: rgba(245, 242, 232, .92);
+    }
+    .progress::-webkit-slider-runnable-track {
+      height: 3px; border-radius: 99px;
+      background: linear-gradient(to right,
+        rgba(245,242,232,.95) var(--played, 0%),
+        rgba(245,242,232,.30) var(--played, 0%));
+    }
+    .control {
+      width: 30px; height: 30px;
+      padding: 0;
+      border: 0;
+      border-radius: 50%;
+      color: #f0eee8;
+      background: transparent;
+      display: grid;
+      place-items: center;
+      cursor: pointer;
+      opacity: .92;
+    }
+    .control:hover { opacity: 1; background: rgba(255,255,255,.10); }
+    .control:focus-visible, .progress:focus-visible {
+      outline: 1px solid #f0eee8;
+      outline-offset: 3px;
+    }
+    .control svg { width: 17px; height: 17px; display: block; }
   </style>
 </head>
 <body>
-  <main aria-label="33 second countdown timer">
-    <div class="timer" id="ring" role="img" aria-label="Countdown progress">
-      <div class="readout" id="readout" aria-live="off">33</div>
+  <audio id="audio" src="shvdc.mp3" preload="metadata"></audio>
+
+  <button class="start-cover" id="startCover" type="button" aria-label="Start audio"></button>
+
+  <div class="player" aria-label="Audio playback">
+    <div class="time-row" aria-live="off">
+      <span id="currentTime">0:00</span>
+      <span id="duration">0:00</span>
     </div>
-    <div class="hint">33 seconds</div>
-  </main>
+    <input id="progress" class="progress" type="range" min="0" max="1000"
+           value="0" step="1" aria-label="Audio position">
+    <button id="toggle" class="control" type="button" aria-label="Play" title="Play">
+      <svg id="symbol" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M8 5v14l11-7z" fill="currentColor"/>
+      </svg>
+    </button>
+  </div>
 
   <script>
     (() => {
-      const DURATION = 33;
-      const FLASH_MS = 75;
-      const ring = document.getElementById("ring");
-      const readout = document.getElementById("readout");
-      const startedAt = performance.now();
-      let lastShown = DURATION;
-      let flashTimer;
+      const audio = document.getElementById('audio');
+      const button = document.getElementById('toggle');
+      const symbol = document.getElementById('symbol');
+      const progress = document.getElementById('progress');
+      const startCover = document.getElementById('startCover');
+      const currentTimeLabel = document.getElementById('currentTime');
+      const durationLabel = document.getElementById('duration');
+      let seeking = false;
+      let started = false;
 
-      function tick(now) {
-        const elapsed = (now - startedAt) / 1000;
-        const remaining = Math.max(0, DURATION - elapsed);
-        const shown = Math.ceil(remaining);
-        const progress = Math.min(1, elapsed / DURATION);
+      const icons = {
+        play: '<path d="M8 5v14l11-7z" fill="currentColor"/>',
+        pause: '<path d="M7 5h4v14H7zM14 5h4v14h-4z" fill="currentColor"/>',
+        replay: '<path d="M12 5V2L8 6l4 4V7a5 5 0 1 1-4.9 6H4.98A7 7 0 1 0 12 5z" fill="currentColor"/>'
+      };
 
-        ring.style.setProperty("--progress", `${progress * 360}deg`);
-        readout.textContent = String(shown);
+      function formatTime(seconds) {
+        if (!Number.isFinite(seconds) || seconds < 0) return '0:00';
+        const total = Math.floor(seconds);
+        const minutes = Math.floor(total / 60);
+        const secs = String(total % 60).padStart(2, '0');
+        return `${minutes}:${secs}`;
+      }
 
-        if (shown !== lastShown) {
-          document.body.classList.add("flash");
-          clearTimeout(flashTimer);
-          flashTimer = setTimeout(() => {
-            document.body.classList.remove("flash");
-          }, FLASH_MS);
-          lastShown = shown;
-        }
+      function updateTimeLabels() {
+        currentTimeLabel.textContent = formatTime(audio.currentTime);
+        durationLabel.textContent = formatTime(audio.duration);
+      }
 
-        if (remaining > 0) {
-          requestAnimationFrame(tick);
-        } else {
-          ring.style.setProperty("--progress", "360deg");
-          readout.textContent = "0";
-          document.body.classList.remove("flash");
+      function setButton(state) {
+        symbol.innerHTML = icons[state];
+        const label = state === 'pause' ? 'Pause' : state === 'replay' ? 'Replay' : 'Play';
+        button.setAttribute('aria-label', label);
+        button.title = label;
+      }
+
+      async function startPlayback() {
+        if (audio.ended) audio.currentTime = 0;
+        try {
+          await audio.play();
+        } catch (_) {
+          setButton('play');
         }
       }
 
-      requestAnimationFrame(tick);
+      async function enterSite() {
+        if (started) return;
+        started = true;
+        await startPlayback();
+      }
+
+      // Keep the blank black screen visible until audio playback actually begins.
+      // The first click starts loading/playing the MP3; then reveal the background
+      // and the small playback-only control.
+      audio.addEventListener('loadedmetadata', updateTimeLabels);
+      audio.addEventListener('durationchange', updateTimeLabels);
+      audio.addEventListener('playing', () => {
+        startCover.classList.add('hidden');
+        setButton('pause');
+      });
+      startCover.addEventListener('click', enterSite);
+
+      button.addEventListener('click', async () => {
+        if (audio.ended) {
+          audio.currentTime = 0;
+          await startPlayback();
+        } else if (audio.paused) {
+          await startPlayback();
+        } else {
+          audio.pause();
+        }
+      });
+
+      audio.addEventListener('play', () => setButton('pause'));
+      audio.addEventListener('pause', () => {
+        if (!audio.ended) setButton('play');
+      });
+      audio.addEventListener('ended', () => {
+        updateTimeLabels();
+        currentTimeLabel.textContent = formatTime(audio.duration);
+        progress.value = 1000;
+        progress.style.setProperty('--played', '100%');
+        setButton('replay');
+      });
+
+      audio.addEventListener('timeupdate', () => {
+        updateTimeLabels();
+        if (!seeking && Number.isFinite(audio.duration) && audio.duration > 0) {
+          const value = Math.round((audio.currentTime / audio.duration) * 1000);
+          progress.value = value;
+          progress.style.setProperty('--played', `${value / 10}%`);
+        }
+      });
+
+      progress.addEventListener('input', () => {
+        seeking = true;
+        const value = Number(progress.value);
+        progress.style.setProperty('--played', `${value / 10}%`);
+      });
+      progress.addEventListener('change', () => {
+        if (Number.isFinite(audio.duration) && audio.duration > 0) {
+          audio.currentTime = (Number(progress.value) / 1000) * audio.duration;
+          updateTimeLabels();
+        }
+        seeking = false;
+      });
+
+      // Show the MP3's real duration as soon as its metadata is available.
+      updateTimeLabels();
+
+      // No autoplay or queue. The black cover waits for the visitor's click.
     })();
   </script>
 </body>
