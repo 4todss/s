@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#000000">
+  <title>33 Second Timer</title>
+  <style>
+    * { box-sizing: border-box; }
+    html, body {
+      width: 100%; height: 100%; margin: 0; overflow: hidden;
+      background: #000; color: #aaa;
+      font-family: Arial, Helvetica, sans-serif;
+    }
+    body {
+      display: grid; place-items: center;
+      transition: background-color 65ms linear;
+    }
+    body.flash { background: #e00000; }
+    main { display: grid; place-items: center; gap: 24px; }
+    .timer {
+      --progress: 0deg;
+      width: min( min(72vw, 72vh), 390px);
+      aspect-ratio: 1;
+      border-radius: 50%;
+      display: grid; place-items: center;
+      background: conic-gradient(
+        from -90deg,
+        #929292 var(--progress),
+        #292929 var(--progress)
+      );
+      position: relative;
+      transition: background 70ms linear;
+    }
+    .timer::before {
+      content: "";
+      position: absolute;
+      inset: 9px;
+      border-radius: 50%;
+      background: #000;
+      transition: background-color 65ms linear;
+    }
+    body.flash .timer::before { background: #e00000; }
+    .readout {
+      position: relative;
+      z-index: 1;
+      color: #bdbdbd;
+      font-size: clamp(48px, 12vw, 76px);
+      font-weight: 300;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: -3px;
+    }
+    .hint {
+      color: #555; font-size: 11px; letter-spacing: 3px;
+      text-transform: uppercase;
+    }
+    @media (prefers-reduced-motion: reduce) {
+      body, .timer, .timer::before { transition: none; }
+    }
+  </style>
+</head>
+<body>
+  <main aria-label="33 second countdown timer">
+    <div class="timer" id="ring" role="img" aria-label="Countdown progress">
+      <div class="readout" id="readout" aria-live="off">33</div>
+    </div>
+    <div class="hint">33 seconds</div>
+  </main>
+
+  <script>
+    (() => {
+      const DURATION = 33;
+      const FLASH_MS = 75;
+      const ring = document.getElementById("ring");
+      const readout = document.getElementById("readout");
+      const startedAt = performance.now();
+      let lastShown = DURATION;
+      let flashTimer;
+
+      function tick(now) {
+        const elapsed = (now - startedAt) / 1000;
+        const remaining = Math.max(0, DURATION - elapsed);
+        const shown = Math.ceil(remaining);
+        const progress = Math.min(1, elapsed / DURATION);
+
+        ring.style.setProperty("--progress", `${progress * 360}deg`);
+        readout.textContent = String(shown);
+
+        if (shown !== lastShown) {
+          document.body.classList.add("flash");
+          clearTimeout(flashTimer);
+          flashTimer = setTimeout(() => {
+            document.body.classList.remove("flash");
+          }, FLASH_MS);
+          lastShown = shown;
+        }
+
+        if (remaining > 0) {
+          requestAnimationFrame(tick);
+        } else {
+          ring.style.setProperty("--progress", "360deg");
+          readout.textContent = "0";
+          document.body.classList.remove("flash");
+        }
+      }
+
+      requestAnimationFrame(tick);
+    })();
+  </script>
+</body>
+</html>
